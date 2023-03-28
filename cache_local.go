@@ -23,6 +23,13 @@ func (l *localCache) Get(key string) (value []byte) {
 	return
 }
 
+func (l *localCache) Remove(key string) (ok bool) {
+	if err := l.lc.Delete(key); err == nil {
+		ok = true
+	}
+	return
+}
+
 func NewLocalCache(opts ...Option) (Cache, error) {
 	dos := defaultOptions()
 	for _, apply := range opts {

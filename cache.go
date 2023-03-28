@@ -5,6 +5,7 @@ import "time"
 type Cache interface {
 	Set(key string, value []byte) (ok bool)
 	Get(key string) (value []byte)
+	Remove(key string) (ok bool)
 }
 
 type Options struct {

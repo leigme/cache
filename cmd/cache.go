@@ -21,4 +21,5 @@ func main() {
 	c, err := cache.NewDbCache(db)
 	fmt.Println(c.Set("abc", []byte("abcdefg")))
 	fmt.Println(string(c.Get("abc")))
+	//fmt.Println(c.Remove("abc"))
 }

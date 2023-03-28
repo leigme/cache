@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const DuplicateEntryError = "Duplicate entry"
+
 //go:embed template/create_table.tpl
 var createSql string
 
@@ -21,18 +23,18 @@ type dbCache struct {
 func (d *dbCache) Set(key string, value []byte) (ok bool) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
-	ldc := LeigDataCache{
+	dct := DataCacheTable{
 		Key:        key,
 		Value:      value,
 		Timeout:    d.timeout,
 		CreateTime: time.Now(),
 	}
-	tx := d.db.Create(&ldc)
-	if tx.Error != nil && strings.Contains(tx.Error.Error(), "Duplicate entry") {
-		tx = d.db.Model(&ldc).Where("`key` = ?", key).Updates(LeigDataCache{
-			Value:      ldc.Value,
-			Timeout:    ldc.Timeout,
-			CreateTime: ldc.CreateTime,
+	tx := d.db.Create(&dct)
+	if tx.Error != nil && strings.Contains(tx.Error.Error(), DuplicateEntryError) {
+		tx = d.db.Model(&dct).Where("`key` = ?", key).Updates(DataCacheTable{
+			Value:      dct.Value,
+			Timeout:    dct.Timeout,
+			CreateTime: dct.CreateTime,
 		})
 	}
 	ok = tx.RowsAffected > 0
@@ -42,15 +44,23 @@ func (d *dbCache) Set(key string, value []byte) (ok bool) {
 func (d *dbCache) Get(key string) (value []byte) {
 	d.lock.RLock()
 	defer d.lock.RUnlock()
-	ldc := LeigDataCache{}
-	tx := d.db.Where("`key` = ?", key).First(&ldc)
+	dct := DataCacheTable{}
+	tx := d.db.Where("`key` = ?", key).First(&dct)
 	if tx.RowsAffected > 0 {
-		if time.Now().Sub(ldc.CreateTime) <= ldc.Timeout {
-			value = ldc.Value
+		if time.Now().Sub(dct.CreateTime) <= dct.Timeout {
+			value = dct.Value
 		} else {
-			d.db.Delete(ldc, ldc.Id)
+			d.db.Delete(dct, dct.Id)
 		}
 	}
+	return
+}
+
+func (d *dbCache) Remove(key string) (ok bool) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	tx := d.db.Where("`key` = ?", key).Delete(&DataCacheTable{})
+	ok = tx.Error == nil
 	return
 }
 
@@ -66,7 +76,7 @@ func NewDbCache(db *gorm.DB, opts ...Option) (Cache, error) {
 	return &dbCache{Options: dos, lock: &sync.RWMutex{}, db: db}, nil
 }
 
-type LeigDataCache struct {
+type DataCacheTable struct {
 	Id         int64         `gorm:"id"`
 	Key        string        `gorm:"key"`
 	Value      []byte        `gorm:"value"`
@@ -76,7 +86,7 @@ type LeigDataCache struct {
 
 func generate(db *gorm.DB) error {
 	replace := map[string]string{
-		"TABLE_NAME": "leig_data_cache",
+		"TABLE_NAME": "data_cache_table",
 	}
 	sql := os.Expand(createSql, func(s string) string {
 		return replace[s]
