@@ -28,8 +28,7 @@ func (d *dbCache) Set(key string, value []byte) (ok bool) {
 	}
 	tx := d.db.Create(&ldc)
 	if tx.Error != nil {
-		tx = d.db.Model(&ldc).Updates(LeigDataCache{
-			Key:        ldc.Key,
+		tx = d.db.Model(&ldc).Where("`key` = ?", key).Updates(LeigDataCache{
 			Value:      ldc.Value,
 			Timeout:    ldc.Timeout,
 			CreateTime: ldc.CreateTime,
@@ -47,8 +46,9 @@ func (d *dbCache) Get(key string) (value []byte) {
 	if tx.RowsAffected > 0 {
 		if time.Now().Sub(ldc.CreateTime) <= ldc.Timeout {
 			value = ldc.Value
+		} else {
+			d.db.Delete(ldc, ldc.Id)
 		}
-		d.db.Delete(ldc, ldc.Id)
 	}
 	return
 }
