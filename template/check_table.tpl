@@ -1,0 +1,1 @@
+SELECT COUNT(*) FROM information_schema.TABLES WHERE table_name ='${TABLE_NAME}';
