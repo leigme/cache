@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"gorm.io/gorm"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -27,7 +28,7 @@ func (d *dbCache) Set(key string, value []byte) (ok bool) {
 		CreateTime: time.Now(),
 	}
 	tx := d.db.Create(&ldc)
-	if tx.Error != nil {
+	if tx.Error != nil && strings.Contains(tx.Error.Error(), "Duplicate entry") {
 		tx = d.db.Model(&ldc).Where("`key` = ?", key).Updates(LeigDataCache{
 			Value:      ldc.Value,
 			Timeout:    ldc.Timeout,
